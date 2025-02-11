@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping Cart</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to the Shopping Cart</h1>
+
+    <h2>Add Product to Cart</h2>
+    <h2>Select Product</h2>
+    <form id="add-to-cart-form">
+
+      <label for="quantity">Quantity:</label>
+      <input type="number" id="quantity" name="quantity" required><br><br>
+
+    <div id="product-selection">
+      <button class="product-button" data-product-id="1">Product 1</button>
+      <button class="product-button" data-product-id="2">Product 2</button>
+    </div>
+
+    </form>
+
+    <h2>Cart Items</h2>
+    <div id="cart-items">
+      <!-- Cart items will be displayed here -->
+    </div>
+    <h2>Total Price: $<span id="total-price">0.00</span></h2>
+  </div>
+
+  <script>
+    let selectedProductId = null;
+
+    // Clear cart on page load
+    window.addEventListener('load', async () => {
+      try {
+        const response = await fetch('/cart/clear', { method: 'POST' });
+        if (!response.ok) {
+          throw new Error('Failed to clear cart');
+        }
+        console.log('Cart cleared successfully');
+      } catch (error) {
+        console.error('Error clearing cart:', error);
+      }
+    });
+
+    // Handle product selection
+    document.querySelectorAll('.product-button').forEach(button => {
+      button.addEventListener('click', (event) => {
+        selectedProductId = event.target.getAttribute('data-product-id');
+        console.log('Selected product ID:', selectedProductId);
+      });
+    });
+
+    document.getElementById('add-to-cart-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const userId = 1; // Hardcoded user ID
+      const quantity = document.getElementById('quantity').value;
+
+      if (!selectedProductId) {
+        alert('Please select a product first');
+        return;
+      }
+
+      try {
+        console.log('Sending request to add product to cart:', { userId, productId: selectedProductId, quantity });
+        const response = await fetch('/cart/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ userId, productId: selectedProductId, quantity })
+        });
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        const result = await response.json();
+        console.log('Response from server:', result);
+        alert(result.message || 'Product added to cart');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while adding the product to the cart');
+      }
+
+      fetchCartItems();
+    });
+
+    async function fetchCartItems() {
+      try {
+        console.log('Fetching cart items...');
+        const response = await fetch('/cart/items');
+        if (!response.ok) {
+          console.error('Failed to fetch cart items:', response.status, response.statusText);
+          throw new Error('Failed to fetch cart items');
+        }
+        const cartItems = await response.json();
+        console.log('Cart items fetched:', cartItems);
+
+        const cartItemsDiv = document.getElementById('cart-items');
+        cartItemsDiv.innerHTML = '';
+
+        let totalPrice = 0;
+
+        cartItems.forEach(item => {
+          const itemDiv = document.createElement('div');
+          itemDiv.classList.add('cart-item');
+          itemDiv.textContent = `Product ID: ${item.product_id}, Quantity: ${item.quantity}`;
+          cartItemsDiv.appendChild(itemDiv);
+
+          // Calculate total price
+          totalPrice += item.price * item.quantity;
+        });
+
+        document.getElementById('total-price').textContent = totalPrice.toFixed(2);
+      } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while fetching the cart items');
+      }
+    }
+
+    fetchCartItems();
+  </script>
+</body>
+</html>
